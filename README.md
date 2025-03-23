@@ -45,13 +45,16 @@ A medieval exploration game where you play as a monk investigating the mysteriou
 
 ## Project Structure 
 
-beneath-the-abbey/
-├── index.html
-├── game.js
-├── gui.js
-├── styles.css
-├── README.md
-└── lib/
-├── three.module.js
-├── OrbitControls.js
-└── dat.gui.min.js
+```
+btabbey/
+├── index.html          # Main HTML entry point
+├── game.js            # Core game logic and initialization
+├── gui.js             # User interface components
+├── main.js            # Main game engine and scene setup
+├── styles.css         # Styling for the game interface
+├── README.md          # Project documentation
+└── lib/               # External libraries
+    ├── three.module.js
+    ├── OrbitControls.js
+    └── dat.gui.min.js
+```
