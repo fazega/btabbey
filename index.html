@@ -1,17 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Beneath the Abbey - Prototype</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beneath the Abbey</title>
     <link rel="stylesheet" href="styles.css">
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "./lib/three.module.js",
-            "three/addons/": "./lib/"
-        }
-    }
-    </script>
 </head>
 <body>
     <div id="instructions">
@@ -24,19 +17,32 @@
         <div class="corner-decoration bottom-left"></div>
         <div class="corner-decoration bottom-right"></div>
         
-        <h2>Current Quest</h2>
-        <div class="quest-item">
-            <div class="quest-title" id="quest-title">Talk to the monk</div>
-            <div class="quest-status" id="quest-status">Not started</div>
-            <div class="quest-description" id="quest-description">
-                Approach the other monk to begin your investigation.
+        <h2 id="quest-title">Talk to the monk</h2>
+        <p id="quest-status">Not started</p>
+        <p id="quest-description">Approach the other monk to begin your investigation.</p>
+    </div>
+
+    <div id="dialog-window" class="hidden">
+        <div class="dialog-content">
+            <h2>Brother Thomas</h2>
+            <div class="dialog-text">
+                <p>Greetings, brother. I sense you're here about the bishop's disappearance. These are troubling times indeed.</p>
+                <p>Before the bishop vanished, he spent much time in the crypt, studying ancient manuscripts. He spoke of finding something that would change everything - something about the cathedral's true purpose.</p>
+                <p>There were whispers of conflict between the bishop and the master mason. The bishop wanted to incorporate certain... unconventional elements into the cathedral's design. Elements that some considered heretical.</p>
+                <p>I've heard rumors that the bishop's chambers were found in disarray, with strange symbols drawn on the walls. The master mason's guild has been unusually quiet about the whole affair.</p>
             </div>
+            <button id="close-dialog">Close</button>
         </div>
     </div>
 
-    <script type="module">
-        import { Game } from './game.js';
-        new Game();
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
     </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html> 

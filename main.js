@@ -15,6 +15,7 @@ const maxDistance = 8;
 const cameraOffset = new THREE.Vector3(0, 2, 5); // Camera's relative position to monk
 let candles = [];
 let npc;
+let altarNPC;  // New NPC in the altar room
 let time = 0;
 let isMouseControlling = false;
 let mouseControlTimer = null;
@@ -25,6 +26,9 @@ let missionPanel = {
     description: "Approach the other monk to begin your investigation."
 };
 let interactKeyPressed = false;
+let hasTalkedToMonk = false;  // Add this flag to track if player has talked to the monk
+let hasTalkedToAltarNPC = false;  // New flag for altar NPC interaction
+let interactKeyWasPressed = false;
 
 // Add these constants at the top with your other constants
 const WALL_SIZE = {
@@ -39,6 +43,13 @@ let currentCameraDistance = 4;  // Starting distance (you can adjust this)
 
 // Add these variables at the top
 let clock = new THREE.Clock();
+
+// Add these variables at the top with other state variables
+let isDoorOpen = false;
+let doorRotation = 0;
+const DOOR_ROTATION_SPEED = 0.05;  // Reduced from 0.1 for smoother animation
+const MAX_DOOR_ROTATION = Math.PI / 2;
+let doorTargetRotation = 0;  // New variable to track target rotation
 
 function init() {
     // Create scene
@@ -81,6 +92,8 @@ function init() {
     createAbbeyWalls(textures);
     createRoof(textures);
     createCandles();
+    createAltarRoom(textures);  // Add the new altar room
+    createAltarRoomFloor(textures);  // Add the altar room floor
 
     // Setup camera controls
     controls = new OrbitControls(camera, renderer.domElement);
@@ -181,14 +194,42 @@ function createAbbeyWalls(textures) {
         bumpScale: 0.1,
     });
     
-    // Create walls
+    // Create walls with doorway in east wall
     const walls = [
         { pos: [0, 2, -10], scale: [20, 4, 0.5] },  // North wall
         { pos: [0, 2, 10], scale: [20, 4, 0.5] },   // South wall
         { pos: [-10, 2, 0], scale: [0.5, 4, 20] },  // West wall
-        { pos: [10, 2, 0], scale: [0.5, 4, 20] },   // East wall
     ];
 
+    // Add the east wall with a doorway
+    // Left section of east wall (from -10 to -0.65)
+    const leftWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const leftWallMesh = new THREE.Mesh(leftWallGeometry, wallMaterial);
+    leftWallMesh.position.set(10, 2, -5.325);
+    leftWallMesh.scale.set(0.5, 4, 9.35);
+    leftWallMesh.castShadow = true;
+    leftWallMesh.receiveShadow = true;
+    scene.add(leftWallMesh);
+
+    // Right section of east wall (from 0.65 to 10)
+    const rightWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const rightWallMesh = new THREE.Mesh(rightWallGeometry, wallMaterial);
+    rightWallMesh.position.set(10, 2, 5.325);
+    rightWallMesh.scale.set(0.5, 4, 9.35);
+    rightWallMesh.castShadow = true;
+    rightWallMesh.receiveShadow = true;
+    scene.add(rightWallMesh);
+
+    // Top section of east wall (above doorway)
+    const topWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const topWallMesh = new THREE.Mesh(topWallGeometry, wallMaterial);
+    topWallMesh.position.set(10, 3, 0);
+    topWallMesh.scale.set(0.5, 2, 20);
+    topWallMesh.castShadow = true;
+    topWallMesh.receiveShadow = true;
+    scene.add(topWallMesh);
+
+    // Add the other walls
     walls.forEach(wall => {
         const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
         const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
@@ -267,7 +308,61 @@ function createCandle(position) {
     scene.add(candleGroup);
 }
 
-function createDetailedMonk(isNPC = false) {
+function createBigCandle(position) {
+    const candleGroup = new THREE.Group();
+    
+    // Bigger candle base
+    const candleGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 12);
+    const candleMaterial = new THREE.MeshPhongMaterial({ color: 0xf4e4bc });
+    const candle = new THREE.Mesh(candleGeometry, candleMaterial);
+    candle.castShadow = true;
+    candle.receiveShadow = true;
+    
+    // Create multiple flame layers for more realistic effect
+    const createFlameLayer = (scale, color, height) => {
+        const flameGeo = new THREE.ConeGeometry(0.03 * scale, 0.12 * scale, 12, 1, true);
+        const flameMat = new THREE.MeshBasicMaterial({ 
+            color: color,
+            transparent: true,
+            opacity: 0.8
+        });
+        const flame = new THREE.Mesh(flameGeo, flameMat);
+        flame.position.y = 0.4 + height;
+        return flame;
+    };
+
+    // Create multiple flame layers
+    const innerFlame = createFlameLayer(1.2, 0xffff00, 0); // Yellow inner
+    const middleFlame = createFlameLayer(1.4, 0xff9933, -0.01); // Orange middle
+    const outerFlame = createFlameLayer(1.6, 0xff3300, -0.02); // Red outer
+    
+    const flames = [innerFlame, middleFlame, outerFlame];
+    flames.forEach(flame => candleGroup.add(flame));
+    
+    // Much brighter flickering light
+    const light = new THREE.PointLight(0xff9933, 8, 15); // Increased intensity and range
+    light.position.y = 0.5;
+    light.castShadow = true;
+    light.shadow.mapSize.width = 512;
+    light.shadow.mapSize.height = 512;
+    light.shadow.camera.near = 0.1;
+    light.shadow.camera.far = 4.0;
+    light.shadow.bias = -0.001;
+    
+    candleGroup.add(candle);
+    candleGroup.add(light);
+    candleGroup.position.copy(position);
+    
+    // Store flame references for animation
+    candles.push({ 
+        group: candleGroup, 
+        light: light, 
+        flames: flames 
+    });
+    scene.add(candleGroup);
+}
+
+function createDetailedMonk(isNPC = false, isAltarNPC = false) {
     const monkGroup = new THREE.Group();
 
     // Robe (main body)
@@ -350,10 +445,28 @@ function createRoof(textures) {
     roof.castShadow = false;
     scene.add(roof);
     
-    // Add wooden beams
+    // Add wooden beams for main room
     const beamGeometry = new THREE.BoxGeometry(0.3, 0.3, 20);
     for (let i = -9; i <= 9; i += 3) {
         const beam = new THREE.Mesh(beamGeometry, woodMaterial);
+        beam.position.set(i, 3.8, 0);
+        beam.castShadow = false;
+        beam.receiveShadow = true;
+        scene.add(beam);
+    }
+
+    // Add altar room roof
+    const altarRoofGeometry = new THREE.BoxGeometry(11, 0.2, 11);
+    const altarRoof = new THREE.Mesh(altarRoofGeometry, woodMaterial);
+    altarRoof.position.set(15, 4, 0);  // Positioned above altar room
+    altarRoof.receiveShadow = true;
+    altarRoof.castShadow = false;
+    scene.add(altarRoof);
+
+    // Add wooden beams for altar room
+    const altarBeamGeometry = new THREE.BoxGeometry(0.3, 0.3, 10);
+    for (let i = 10; i <= 20; i += 3) {
+        const beam = new THREE.Mesh(altarBeamGeometry, woodMaterial);
         beam.position.set(i, 3.8, 0);
         beam.castShadow = false;
         beam.receiveShadow = true;
@@ -441,9 +554,26 @@ function updateMonkPosition() {
         }
     }
 
-    // Clamp monk position within walls
-    monk.position.x = Math.max(-WALL_SIZE.x, Math.min(WALL_SIZE.x, monk.position.x));
-    monk.position.z = Math.max(-WALL_SIZE.z, Math.min(WALL_SIZE.z, monk.position.z));
+    // Check if we're in the doorway area
+    const isNearDoor = Math.abs(monk.position.z) < 1 && Math.abs(monk.position.x - 10) < 1;
+    
+    // Apply wall constraints based on whether we're in the doorway and if the door is open
+    if (isNearDoor && isDoorOpen) {
+        // When in doorway and door is open, only constrain y position
+        monk.position.y = Math.max(0, Math.min(4, monk.position.y));
+    } else {
+        // Normal wall constraints
+        if (monk.position.x > 10) {
+            // In altar room
+            monk.position.x = Math.max(10, Math.min(20, monk.position.x));
+            monk.position.z = Math.max(-5, Math.min(5, monk.position.z));
+        } else {
+            // In main room
+            monk.position.x = Math.max(-WALL_SIZE.x, Math.min(WALL_SIZE.x, monk.position.x));
+            monk.position.z = Math.max(-WALL_SIZE.z, Math.min(WALL_SIZE.z, monk.position.z));
+        }
+        monk.position.y = Math.max(0, Math.min(4, monk.position.y));
+    }
 
     // Update camera position and controls
     controls.target.set(
@@ -468,8 +598,23 @@ function updateMonkPosition() {
     }
 
     // Clamp camera position within walls
-    camera.position.x = Math.max(-WALL_SIZE.x, Math.min(WALL_SIZE.x, camera.position.x));
-    camera.position.z = Math.max(-WALL_SIZE.z, Math.min(WALL_SIZE.z, camera.position.z));
+    if (monk.position.x > 10) {
+        // In altar room - smooth transition
+        const targetX = Math.max(10, Math.min(20, camera.position.x));
+        const targetZ = Math.max(-5, Math.min(5, camera.position.z));
+        
+        // Smoothly interpolate camera position
+        camera.position.x += (targetX - camera.position.x) * 0.1;
+        camera.position.z += (targetZ - camera.position.z) * 0.1;
+    } else {
+        // In main room - smooth transition
+        const targetX = Math.max(-WALL_SIZE.x, Math.min(WALL_SIZE.x, camera.position.x));
+        const targetZ = Math.max(-WALL_SIZE.z, Math.min(WALL_SIZE.z, camera.position.z));
+        
+        // Smoothly interpolate camera position
+        camera.position.x += (targetX - camera.position.x) * 0.1;
+        camera.position.z += (targetZ - camera.position.z) * 0.1;
+    }
     camera.position.y = Math.max(minCameraHeight, Math.min(maxCameraHeight, camera.position.y));
 
     controls.update();
@@ -477,42 +622,254 @@ function updateMonkPosition() {
 
 function updateQuestPanel(title, status, description) {
     document.getElementById('quest-title').textContent = title;
-    document.getElementById('quest-status').textContent = status;
+    const statusElement = document.getElementById('quest-status');
+    statusElement.textContent = status;
+    
+    // Set the appropriate data-status attribute
+    if (status === "Not started") {
+        statusElement.removeAttribute('data-status');
+    } else if (status === "In Progress") {
+        statusElement.setAttribute('data-status', 'in-progress');
+    } else if (status === "Completed") {
+        statusElement.setAttribute('data-status', 'completed');
+    }
+    
     document.getElementById('quest-description').textContent = description;
 }
 
 function checkNPCInteraction() {
     const distanceToNPC = monk.position.distanceTo(npc.position);
+    const distanceToAltarNPC = monk.position.distanceTo(altarNPC.position);
+    const distanceToDoor = Math.abs(monk.position.z) < 1 && Math.abs(monk.position.x - 10) < 1;
     
-    if (distanceToNPC < 2) { // Within 2 units of the NPC
+    if (distanceToDoor) {
         updateQuestPanel(
-            "Talk to the monk",
-            "In range - Press E to talk",
-            "Approach the other monk to begin your investigation."
+            "Door",
+            isDoorOpen ? "Open" : "Closed",
+            "Press E to " + (isDoorOpen ? "close" : "open") + " the door"
         );
         
-        // Check for interaction key (E)
-        if (interactKeyPressed) {
-            updateQuestPanel(
-                "The Bishop's Disappearance",
-                "In Progress",
-                "The monk tells you about strange occurrences in the abbey's crypt before the bishop's disappearance..."
-            );
-            // You could trigger a dialogue system here
+        if (interactKeyPressed && !interactKeyWasPressed) {  // Only trigger once when E is first pressed
+            isDoorOpen = !isDoorOpen;
+            doorTargetRotation = isDoorOpen ? MAX_DOOR_ROTATION : 0;
         }
-    } else if (document.getElementById('quest-status').textContent === "In range - Press E to talk") {
+    } else if (distanceToNPC < 2) { // Within 2 units of the first NPC
+        if (!hasTalkedToMonk) {
+            updateQuestPanel(
+                "Talk to the monk",
+                "In range - Press E to talk",
+                "Approach the other monk to begin your investigation."
+            );
+            
+            if (interactKeyPressed) {
+                hasTalkedToMonk = true;
+                updateQuestPanel(
+                    "The Bishop's Disappearance",
+                    "In Progress",
+                    "The monk tells you about strange occurrences in the abbey's crypt before the bishop's disappearance..."
+                );
+                showDialog();
+            }
+        }
+    } else if (distanceToAltarNPC < 2) { // Within 2 units of the altar NPC
+        if (!hasTalkedToAltarNPC) {
+            updateQuestPanel(
+                "Talk to the altar keeper",
+                "In range - Press E to talk",
+                "The altar keeper might know something about the bishop's disappearance."
+            );
+            
+            if (interactKeyPressed) {
+                hasTalkedToAltarNPC = true;
+                updateQuestPanel(
+                    "The Bishop's Disappearance",
+                    "In Progress",
+                    "The altar keeper tells you about strange symbols he found in the bishop's private chapel..."
+                );
+                showAltarDialog();
+            }
+        }
+    } else if (!hasTalkedToMonk && document.getElementById('quest-status').textContent === "In range - Press E to talk") {
         updateQuestPanel(
             "Talk to the monk",
             "Not started",
             "Approach the other monk to begin your investigation."
         );
     }
+    
+    // Store the current state of the interact key for next frame
+    interactKeyWasPressed = interactKeyPressed;
+}
+
+function showDialog() {
+    const dialogWindow = document.getElementById('dialog-window');
+    dialogWindow.classList.remove('hidden');
+    
+    // Add event listener for close button
+    document.getElementById('close-dialog').addEventListener('click', () => {
+        dialogWindow.classList.add('hidden');
+    });
+}
+
+function showAltarDialog() {
+    const dialogWindow = document.getElementById('dialog-window');
+    dialogWindow.classList.remove('hidden');
+    
+    // Update dialog content for altar NPC
+    document.querySelector('.dialog-content h2').textContent = 'Brother Marcus';
+    document.querySelector('.dialog-text').innerHTML = `
+        <p>Ah, you're investigating the bishop's disappearance. I've been tending to this altar for many years, and I've seen many things.</p>
+        <p>The bishop often came here to pray, especially in the early hours of the morning. He was particularly interested in the ancient symbols carved into the altar's base.</p>
+        <p>One night, I saw him speaking with the master mason here. They were arguing about something - something about the cathedral's true purpose. The bishop mentioned something about "the old ways" and "forbidden knowledge."</p>
+        <p>After that night, I found strange markings on the altar - symbols I've never seen before. They look ancient, possibly from before the time of Christ.</p>
+    `;
+    
+    // Add event listener for close button
+    document.getElementById('close-dialog').addEventListener('click', () => {
+        dialogWindow.classList.add('hidden');
+    });
+}
+
+function createAltarRoom(textures) {
+    // Create altar room walls (smaller room adjacent to main room)
+    const altarWallMaterial = new THREE.MeshPhongMaterial({ 
+        map: textures.stoneWall.map,
+        bumpMap: textures.stoneWall.map,
+        bumpScale: 0.1,
+    });
+
+    // Create altar room walls - positioned to the right of the main room
+    const altarWalls = [
+        { pos: [15, 2, -5], scale: [10, 4, 0.5] },  // North wall
+        { pos: [15, 2, 5], scale: [10, 4, 0.5] },   // South wall
+        { pos: [20, 2, 0], scale: [0.5, 4, 10] },   // East wall
+    ];
+
+    // Add the connecting wall with a doorway
+    // Left section of connecting wall
+    const leftWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const leftWallMesh = new THREE.Mesh(leftWallGeometry, altarWallMaterial);
+    leftWallMesh.position.set(10, 2, -4);
+    leftWallMesh.scale.set(0.5, 4, 6);
+    leftWallMesh.castShadow = true;
+    leftWallMesh.receiveShadow = true;
+    scene.add(leftWallMesh);
+
+    // Right section of connecting wall
+    const rightWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const rightWallMesh = new THREE.Mesh(rightWallGeometry, altarWallMaterial);
+    rightWallMesh.position.set(10, 2, 4);
+    rightWallMesh.scale.set(0.5, 4, 6);
+    rightWallMesh.castShadow = true;
+    rightWallMesh.receiveShadow = true;
+    scene.add(rightWallMesh);
+
+    // Top section of connecting wall
+    const topWallGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const topWallMesh = new THREE.Mesh(topWallGeometry, altarWallMaterial);
+    topWallMesh.position.set(10, 3, 0);
+    topWallMesh.scale.set(0.5, 2, 10);
+    topWallMesh.castShadow = true;
+    topWallMesh.receiveShadow = true;
+    scene.add(topWallMesh);
+
+    // Add the other walls
+    altarWalls.forEach(wall => {
+        const wallGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const wallMesh = new THREE.Mesh(wallGeometry, altarWallMaterial);
+        wallMesh.position.set(...wall.pos);
+        wallMesh.scale.set(...wall.scale);
+        wallMesh.castShadow = true;
+        wallMesh.receiveShadow = true;
+        scene.add(wallMesh);
+    });
+
+    // Create door group for proper edge rotation
+    const doorGroup = new THREE.Group();
+    doorGroup.position.set(10, 1, 0);  // Position the group at the door's pivot point
+
+    // Create door (make it thicker and more visible)
+    const doorGeometry = new THREE.BoxGeometry(1.3, 2, 0.1);  // Width: 1.3 (half of 2.6), Height: 2 (full height)
+    const doorMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x8B4513,
+        shininess: 30
+    });
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    door.position.set(0, 0, 0.65);  // Position door relative to the group (half its width to the right)
+    door.castShadow = true;
+    door.receiveShadow = true;
+    doorGroup.add(door);
+
+    // Store door group reference for animation
+    window.door = doorGroup;
+    scene.add(doorGroup);
+
+    // Create altar
+    const altarGeometry = new THREE.BoxGeometry(2, 1, 1);
+    const altarMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x8B4513,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    const altar = new THREE.Mesh(altarGeometry, altarMaterial);
+    altar.position.set(15, 0.5, -3);
+    altar.castShadow = true;
+    altar.receiveShadow = true;
+    scene.add(altar);
+
+    // Add altar decorations
+    const crossGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+    const crossMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700 });
+    const cross = new THREE.Mesh(crossGeometry, crossMaterial);
+    cross.position.set(15, 1.2, -3);
+    cross.castShadow = true;
+    cross.receiveShadow = true;
+    scene.add(cross);
+
+    // Add big candlesticks on altar
+    const bigCandlestickPositions = [
+        new THREE.Vector3(14.2, 0.5, -3),
+        new THREE.Vector3(15.8, 0.5, -3)
+    ];
+    bigCandlestickPositions.forEach(pos => createBigCandle(pos));
+
+    // Create altar NPC (smaller monk)
+    altarNPC = createDetailedMonk(true);
+    altarNPC.position.set(15, 0, -2);
+    altarNPC.rotation.y = Math.PI;
+    altarNPC.scale.set(0.8, 0.8, 0.8);  // Make the NPC smaller
+    scene.add(altarNPC);
+}
+
+function createAltarRoomFloor(textures) {
+    // Create altar room floor (smaller than main room)
+    const altarFloorGeometry = new THREE.PlaneGeometry(10, 10);
+    const altarFloorMaterial = new THREE.MeshPhongMaterial({ 
+        map: textures.stoneFloor.map,
+        side: THREE.DoubleSide,
+        color: 0x999999
+    });
+    
+    const altarFloor = new THREE.Mesh(altarFloorGeometry, altarFloorMaterial);
+    altarFloor.rotation.x = Math.PI / 2;
+    altarFloor.position.set(15, 0, 0);  // Positioned in the altar room
+    altarFloor.receiveShadow = true;
+    scene.add(altarFloor);
 }
 
 function animate() {
     requestAnimationFrame(animate);
     
     const time = clock.getElapsedTime();
+    
+    // Animate door with smooth interpolation
+    if (window.door) {
+        // Smoothly interpolate current rotation towards target
+        doorRotation += (doorTargetRotation - doorRotation) * DOOR_ROTATION_SPEED;
+        
+        // Apply the rotation around the door's edge (the group's position)
+        window.door.rotation.y = doorRotation;
+    }
     
     // Animate candles
     candles.forEach(candle => {
