@@ -795,7 +795,8 @@ function createAltarRoom(textures) {
         shininess: 30
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0, 0.65);  // Position door relative to the group (half its width to the right)
+    door.position.set(0.65, 0, 0);  // Position door relative to the group (half its width to the right)
+    door.rotation.y = Math.PI / 2;  // Initial rotation (parallel to wall)
     door.castShadow = true;
     door.receiveShadow = true;
     doorGroup.add(door);
