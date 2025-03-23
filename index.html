@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beneath the Abbey - Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./lib/three.module.js",
+            "three/addons/": "./lib/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="instructions">
+        Use Z,Q,S,D to move | Right-click + drag to move camera | Mouse wheel to zoom
+    </div>
+    
+    <div id="quest-panel">
+        <div class="corner-decoration top-left"></div>
+        <div class="corner-decoration top-right"></div>
+        <div class="corner-decoration bottom-left"></div>
+        <div class="corner-decoration bottom-right"></div>
+        
+        <h2>Current Quest</h2>
+        <div class="quest-item">
+            <div class="quest-title" id="quest-title">Talk to the monk</div>
+            <div class="quest-status" id="quest-status">Not started</div>
+            <div class="quest-description" id="quest-description">
+                Approach the other monk to begin your investigation.
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Game } from './game.js';
+        new Game();
+    </script>
+</body>
+</html> 

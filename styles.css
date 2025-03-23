@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+
+body { 
+    margin: 0;
+    overflow: hidden;
+}
+
+canvas { 
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+#instructions {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    color: #d4b684;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 14px;
+    background: rgba(43, 29, 14, 0.9);
+    padding: 15px;
+    border: 2px solid #d4b684;
+    border-radius: 5px;
+    z-index: 2;
+}
+
+#quest-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    background: rgba(43, 29, 14, 0.9);
+    color: #d4b684;
+    font-family: 'MedievalSharp', cursive;
+    padding: 20px;
+    border: 2px solid #d4b684;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+
+#quest-panel h2 {
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-size: 24px;
+    color: #ffd700;
+    text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+    border-bottom: 1px solid #d4b684;
+    padding-bottom: 10px;
+}
+
+.quest-item {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+
+.quest-title {
+    font-size: 18px;
+    margin-bottom: 5px;
+    color: #ffd700;
+}
+
+.quest-status {
+    font-size: 14px;
+    color: #98fb98;
+    margin-bottom: 5px;
+}
+
+.quest-description {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #d4b684;
+}
+
+.corner-decoration {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d4b684;
+}
+
+.top-left {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.top-right {
+    top: -2px;
+    right: -2px;
+    border-left: none;
+    border-bottom: none;
+}
+
+.bottom-left {
+    bottom: -2px;
+    left: -2px;
+    border-right: none;
+    border-top: none;
+}
+
+.bottom-right {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+} 
